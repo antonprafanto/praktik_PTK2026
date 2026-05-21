@@ -133,8 +133,8 @@ https://wokwi.com
 
 1. Klik tab **`sketch.ino`** di editor Wokwi
 2. Pilih semua teks → **`Ctrl + A`** → hapus → **`Delete`**
-3. Buka file [`sketch.ino`](praktikum_wokwi/sketch.ino) dari repo ini
-4. Salin semua (**`Ctrl + A`** → **`Ctrl + C`**)
+3. Download file kode: **[⬇️ sketch.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch.ino)**
+4. Buka file yang terdownload → salin semua (**`Ctrl + A`** → **`Ctrl + C`**)
 5. Tempel ke Wokwi (**`Ctrl + V`**)
 
 ---
@@ -142,7 +142,7 @@ https://wokwi.com
 #### Langkah 4 — Tempel Rangkaian Virtual
 
 1. Klik tab **`diagram.json`** di Wokwi
-2. Pilih semua → hapus → tempel isi file [`diagram.json`](praktikum_wokwi/diagram.json)
+2. Pilih semua → hapus → download **[⬇️ diagram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram.json)** → buka → salin → tempel
 
 ---
 

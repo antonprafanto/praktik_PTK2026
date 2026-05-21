@@ -57,10 +57,10 @@
 
 ### Ada 2 Level Praktikum:
 
-| Level | Proyek | File |
-|-------|--------|------|
-| 🟢 **Dasar** | Arduino Uno + Sensor + LCD + LED | `sketch.ino` + `diagram.json` |
-| 🔵 **Lanjutan** | ESP32 + Sensor + **Notifikasi Telegram** | `sketch_telegram.ino` + `diagram_telegram.json` |
+| Level | Platform | Fitur | File |
+|-------|----------|-------|------|
+| 🟢 **Level Dasar** | Arduino Uno | Sensor + LCD + LED alarm | `sketch.ino` + `diagram.json` |
+| 🔵 **Level Lanjutan** | ESP32 (punya WiFi) | Sensor + LCD + LED + **Notifikasi Telegram ke HP** | `sketch_telegram.ino` + `diagram_telegram.json` |
 
 ---
 
@@ -124,7 +124,8 @@ https://wokwi.com
 
 #### Langkah 2 — Buat Proyek Baru
 
-Klik **`+ New Project`** → pilih **`Arduino Uno`**
+- Untuk **Level Dasar**: Klik **`+ New Project`** → pilih **`Arduino Uno`**
+- Untuk **Level Lanjutan** (Telegram): Klik **`+ New Project`** → pilih **`ESP32`**
 
 ---
 
@@ -201,15 +202,19 @@ Kamu tidak perlu memahami semua kodenya. Cukup tahu bahwa:
 ```
 praktik_PTK2026/
 │
-├── 📊 IoT_untuk_Peternakan_UNMUL.pptx   ← Slide kuliah (20 slide)
+├── 📊 IoT_untuk_Peternakan_UNMUL.pptx      ← Slide kuliah (22 slide)
 │
 ├── 📁 praktikum_wokwi/
-│   ├── 🔧 sketch.ino                    ← Kode Arduino (copy-paste ke Wokwi)
-│   ├── 🔌 diagram.json                  ← Rangkaian virtual (copy-paste ke Wokwi)
-│   └── 📖 PANDUAN_PRAKTIKUM.md         ← Panduan lengkap + soal diskusi
+│   ├── 🟢 sketch.ino                       ← [Level Dasar]   Kode Arduino Uno
+│   ├── 🟢 diagram.json                     ← [Level Dasar]   Rangkaian Arduino Uno
+│   ├── 🔵 sketch_telegram.ino              ← [Level Lanjutan] Kode ESP32 + Telegram
+│   ├── 🔵 diagram_telegram.json            ← [Level Lanjutan] Rangkaian ESP32
+│   └── 📖 PANDUAN_PRAKTIKUM.md            ← Panduan + soal diskusi + tantangan
 │
-└── 📄 README.md                         ← Halaman ini
+└── 📄 README.md                            ← Halaman ini
 ```
+
+> **Mulai dari Level Dasar** jika baru pertama kali. Setelah berhasil, lanjut ke Level Lanjutan (Telegram)!
 
 ---
 
@@ -227,10 +232,11 @@ Jawab bersama teman dan dosen kamu:
 
 | | |
 |-|-|
-| **Institusi** | Fakultas Peternakan, Universitas Mulawarman |
+| **Institusi** | Fakultas Peternakan, **UNIVERSITAS MULAWARMAN** |
 | **Kota** | Samarinda, Kalimantan Timur |
 | **Website** | [unmul.ac.id](https://unmul.ac.id) |
-| **Simulator** | [wokwi.com](https://wokwi.com) |
+| **Simulator IoT** | [wokwi.com](https://wokwi.com) |
+| **Telegram Bot** | [@BotFather](https://t.me/BotFather) (untuk buat bot sendiri) |
 | **Tahun** | 2026 |
 
 ---

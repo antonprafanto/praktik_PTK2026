@@ -1,132 +1,136 @@
 // ================================================================
-//  PROYEK WOKWI v3: Monitor Kandang + TELEGRAM BOT (ESP32 + OLED)
+//  PROYEK WOKWI: Monitor Kandang Sapi + TELEGRAM BOT (ESP32)
 //  Fakultas Peternakan — Universitas Mulawarman 2026
+//  Referensi: https://wokwi.com/projects/370308747349207041
 //  Simulator: https://wokwi.com
 // ================================================================
 //
-//  KOMPONEN VIRTUAL (ESP32 — punya WiFi bawaan!):
-//  - 1x ESP32 DevKit V1  (otak + WiFi)
-//  - 1x Sensor DHT22     (suhu & kelembaban)
-//  - 1x OLED SSD1306 0.96" I2C  (layar penampil — lebih mudah!)
-//  - 1x LED Merah        (lampu alarm fisik)
+//  KOMPONEN:
+//  - ESP32 DevKit V1  (otak + WiFi)
+//  - Sensor DHT22     (suhu & kelembaban)
+//  - OLED SSD1306 I2C (layar penampil — hanya 2 kabel!)
+//  - LED Merah        (lampu alarm)
 //
-//  KEUNGGULAN OLED vs LCD:
-//  ✅ Hanya 2 kabel data (SDA + SCL) — jauh lebih simpel!
-//  ✅ Tidak ada masalah strapping pin
-//  ✅ Tampilan lebih keren & modern
-//
-//  CARA KERJA:
-//  ✅ Di SIMULATOR Wokwi: notifikasi Telegram ditampilkan
-//     di Serial Monitor (kotak hitam di bawah simulator)
-//  ✅ Di HARDWARE NYATA:  notifikasi terkirim ke HP kamu
-//     lewat aplikasi Telegram
+//  FITUR:
+//  ✅ Kirim notifikasi suhu ke Telegram otomatis tiap 30 detik
+//  ✅ Kirim ALERT darurat jika suhu > 30°C atau > 35°C
+//  ✅ Terima perintah dari Telegram (/status, /start, dll.)
+//  ✅ Di Wokwi: pakai WiFi "Wokwi-GUEST" (gratis, tanpa password!)
 // ================================================================
 
-#include <Wire.h>                   // Library I2C (untuk OLED)
-#include <Adafruit_GFX.h>           // Library grafis dasar OLED
-#include <Adafruit_SSD1306.h>       // Library OLED SSD1306
-#include <DHT.h>                    // Library sensor suhu DHT
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include "DHTesp.h"                  // Library DHT khusus ESP32
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-// ── Untuk Hardware Nyata: Hapus "//" dari baris-baris ini ──────
-// #include <WiFi.h>
-// #include <WiFiClientSecure.h>
-// #include <UniversalTelegramBot.h>  // Install via Library Manager
+// ── WiFi (Wokwi-GUEST = WiFi virtual Wokwi, gratis!) ──────────
+const char* ssid     = "Wokwi-GUEST";
+const char* password = "";
 
-// const char* WIFI_SSID  = "NamaWiFiKamu";      // ← Ganti!
-// const char* WIFI_PASS  = "PasswordWiFiKamu";  // ← Ganti!
-// const String BOT_TOKEN = "1234567890:ABCDEF_TOKEN_DARI_BOTFATHER"; // ← Ganti!
-// const String CHAT_ID   = "-1001234567890";    // ← Ganti!
-// WiFiClientSecure klien;
-// UniversalTelegramBot bot(BOT_TOKEN, klien);
-// ───────────────────────────────────────────────────────────────
+// ── Telegram Bot (Ganti dengan token & chat_id milikmu!) ──────
+// Cara dapat BOTtoken: Chat @BotFather di Telegram → /newbot
+// Cara dapat CHAT_ID:  Chat @userinfobot di Telegram → /start
+#define BOTtoken  "MASUKKAN_TOKEN_BOT_KAMU_DISINI"
+#define CHAT_ID   "MASUKKAN_CHAT_ID_KAMU_DISINI"
 
-// ── Konfigurasi OLED ──────────────────────────────────────────
-#define OLED_WIDTH   128
-#define OLED_HEIGHT   64
-#define OLED_ADDRESS 0x3C   // Alamat I2C OLED (biasanya 0x3C)
-// SDA → GPIO 21 (default I2C ESP32)
-// SCL → GPIO 22 (default I2C ESP32)
-Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
+// ── Untuk Demo/Simulasi: gunakan token contoh dari referensi ───
+// #define BOTtoken  "6323579581:AAHFEgqXhRQ5RyS2E47cIKfz6yfv6hf3kUs"
+// #define CHAT_ID   "27892295"
 
-// ── Konfigurasi Sensor DHT22 ──────────────────────────────────
-#define PIN_SENSOR    15    // DHT22 data → GPIO 15
-#define JENIS_SENSOR  DHT22
-DHT sensor(PIN_SENSOR, JENIS_SENSOR);
-
-// ── Konfigurasi LED Alarm ─────────────────────────────────────
+// ── Konfigurasi Pin ────────────────────────────────────────────
+#define DHT_PIN       15    // DHT22 → GPIO 15
 #define PIN_LED_ALARM  2    // LED Merah → GPIO 2
 
 // ── Batas Suhu Kandang Sapi ────────────────────────────────────
-#define BATAS_PANAS   30.0  // ⚠️ Peringatan (°C)
-#define BATAS_KRITIS  35.0  // 🚨 Bahaya kritis (°C)
+#define BATAS_PANAS   30.0  // ⚠️ Peringatan
+#define BATAS_KRITIS  35.0  // 🚨 Darurat
+
+// ── Interval Waktu ─────────────────────────────────────────────
+#define WAKTU_KIRIM   30000   // Kirim laporan setiap 30 detik
+#define WAKTU_BACA    1000    // Cek pesan Telegram setiap 1 detik
+
+// ── OLED SSD1306 I2C (SDA=GPIO21, SCL=GPIO22) ─────────────────
+#define OLED_WIDTH   128
+#define OLED_HEIGHT   64
+Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
+
+// ── Objek Library ─────────────────────────────────────────────
+WiFiClientSecure   klien;
+UniversalTelegramBot bot(BOTtoken, klien);
+DHTesp             dhtSensor;
 
 // ── Variabel Status ───────────────────────────────────────────
 bool  sudah_alert     = false;
-int   hitungan_bacaan = 0;
+float suhu_terakhir   = 0;
+float lembab_terakhir = 0;
 
 // ================================================================
 //  FUNGSI: Tampilkan data di OLED
 // ================================================================
-void tampilOLED(float suhu, float lembab) {
+void tampilOLED(float suhu, float lembab, String status) {
     oled.clearDisplay();
     oled.setTextColor(SSD1306_WHITE);
 
-    // ── Baris 1: Judul ─────────────────────────────────────────
+    // Judul
     oled.setTextSize(1);
-    oled.setCursor(10, 0);
+    oled.setCursor(8, 0);
     oled.print("KANDANG SAPI UNMUL");
-
-    // ── Garis pemisah ──────────────────────────────────────────
     oled.drawLine(0, 10, 127, 10, SSD1306_WHITE);
 
-    // ── Baris 2: Suhu (teks besar) ─────────────────────────────
+    // Suhu (teks besar)
     oled.setTextSize(2);
-    oled.setCursor(0, 16);
-    oled.print("T:");
-    oled.print(suhu, 1);
-    oled.print("C");
+    oled.setCursor(0, 14);
+    oled.print("T:"); oled.print(suhu, 1); oled.print("C");
 
-    // ── Baris 3: Kelembaban ────────────────────────────────────
+    // Kelembaban
     oled.setTextSize(1);
-    oled.setCursor(0, 38);
-    oled.print("Kelembaban: ");
-    oled.print(lembab, 1);
-    oled.print("%");
+    oled.setCursor(0, 36);
+    oled.print("Kelembaban: "); oled.print(lembab, 1); oled.print("%");
 
-    // ── Baris 4: Status ────────────────────────────────────────
-    oled.setCursor(0, 52);
-    if (suhu >= BATAS_KRITIS) {
-        oled.print("!! KRITIS - BAHAYA !!");
-    } else if (suhu >= BATAS_PANAS) {
-        oled.print(">> PANAS - Waspada! ");
-    } else {
-        oled.print("   STATUS: AMAN :)  ");
-    }
+    // Status
+    oled.setCursor(0, 50);
+    oled.print(status);
 
     oled.display();
 }
 
 // ================================================================
-//  FUNGSI: Kirim Notifikasi ke Telegram
-//  Di simulator → tampil di Serial Monitor
-//  Di hardware  → terkirim ke HP lewat Telegram
+//  FUNGSI: Tangani pesan masuk dari Telegram
 // ================================================================
-void kirimTelegram(String ikon, String judul, String isi) {
-    // ── [SIMULATOR] Tampilkan di Serial Monitor ─────────────────
-    Serial.println();
-    Serial.println(F("╔══════════════════════════════════════╗"));
-    Serial.println(F("║  📱  NOTIFIKASI TELEGRAM BOT         ║"));
-    Serial.println(F("╠══════════════════════════════════════╣"));
-    Serial.print(F("║  Dari : @KandangSapiUNMUL_Bot        "));
-    Serial.println(F("║"));
-    Serial.print(F("║  "));
-    Serial.print(ikon); Serial.print(F(" ")); Serial.println(judul);
-    Serial.print(F("║  ")); Serial.println(isi);
-    Serial.println(F("╚══════════════════════════════════════╝"));
+void tanganiPesan(int jumlahPesan) {
+    for (int i = 0; i < jumlahPesan; i++) {
+        String chat_id = String(bot.messages[i].chat_id);
+        String teks    = bot.messages[i].text;
+        String nama    = bot.messages[i].from_name;
 
-    // ── [HARDWARE NYATA] Aktifkan baris ini ─────────────────────
-    // String pesan = ikon + " *" + judul + "*\n" + isi;
-    // bot.sendMessage(CHAT_ID, pesan, "Markdown");
+        Serial.print(F("[Telegram] Pesan dari ")); Serial.print(nama);
+        Serial.print(F(": ")); Serial.println(teks);
+
+        if (teks == "/start") {
+            String sambutan = "Halo, " + nama + "! 🐄\n";
+            sambutan += "Selamat datang di Monitor Kandang Sapi UNMUL!\n\n";
+            sambutan += "Perintah yang tersedia:\n";
+            sambutan += "/status — Cek suhu & kelembaban sekarang\n";
+            sambutan += "/start  — Tampilkan menu ini\n";
+            bot.sendMessage(chat_id, sambutan, "");
+        }
+
+        if (teks == "/status") {
+            String laporan = "📊 *Status Kandang Terkini*\n";
+            laporan += "🌡 Suhu     : " + String(suhu_terakhir, 1) + "°C\n";
+            laporan += "💧 Lembab  : " + String(lembab_terakhir, 1) + "%\n";
+            if (suhu_terakhir >= BATAS_KRITIS)
+                laporan += "🚨 Status  : KRITIS - BAHAYA!";
+            else if (suhu_terakhir >= BATAS_PANAS)
+                laporan += "⚠️ Status  : PANAS - Waspada!";
+            else
+                laporan += "✅ Status  : AMAN";
+            bot.sendMessage(chat_id, laporan, "Markdown");
+        }
+    }
 }
 
 // ================================================================
@@ -134,124 +138,134 @@ void kirimTelegram(String ikon, String judul, String isi) {
 // ================================================================
 void setup() {
     Serial.begin(115200);
-    delay(500);   // Tunggu ESP32 stabil
+    delay(500);
 
     // Inisialisasi OLED
-    Wire.begin(21, 22);   // SDA=21, SCL=22 (default I2C ESP32)
-    if (!oled.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+    Wire.begin(21, 22);
+    if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("[ERROR] OLED tidak terdeteksi!"));
-        while (true);   // Berhenti jika OLED tidak ditemukan
+        while (true);
     }
 
     // Inisialisasi sensor & LED
-    sensor.begin();
+    dhtSensor.setup(DHT_PIN, DHTesp::DHT22);
     pinMode(PIN_LED_ALARM, OUTPUT);
 
-    // Splash screen OLED
+    // Splash screen
     oled.clearDisplay();
     oled.setTextSize(1);
     oled.setTextColor(SSD1306_WHITE);
     oled.setCursor(15, 10); oled.print("KANDANG PINTAR");
-    oled.setCursor(10, 25); oled.print("IoT + Telegram Bot");
-    oled.setCursor(5,  40); oled.print("Fapet UNMUL 2026");
+    oled.setCursor(5,  25); oled.print("IoT + Telegram Bot");
+    oled.setCursor(12, 40); oled.print("Fapet UNMUL 2026");
+    oled.setCursor(18, 55); oled.print("Menghubungkan...");
     oled.display();
-    delay(2500);
+
+    // Hubungkan ke WiFi Wokwi (virtual WiFi, tidak perlu password!)
+    Serial.print(F("\nMenghubungkan ke WiFi"));
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    klien.setCACert(TELEGRAM_CERTIFICATE_ROOT);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println(F("\n✅ WiFi Terhubung!"));
+    Serial.print(F("IP: ")); Serial.println(WiFi.localIP());
 
     Serial.println(F("\n============================================"));
     Serial.println(F("   SISTEM MONITOR KANDANG SAPI — AKTIF!   "));
-    Serial.println(F("   ESP32 + DHT22 + OLED + Telegram Bot     "));
-    Serial.println(F("============================================"));
-    Serial.println(F("   Perhatikan kotak notifikasi Telegram    "));
-    Serial.println(F("   yang muncul di Serial Monitor ini!       "));
+    Serial.println(F("   Kirim /start ke bot Telegram kamu!      "));
     Serial.println(F("============================================\n"));
 
     // Kirim notifikasi sistem aktif
-    kirimTelegram("✅", "Sistem Kandang AKTIF",
-        "Monitor kandang sapi menyala.\nSiap memantau 24 jam nonstop!");
+    bot.sendMessage(CHAT_ID,
+        "✅ *Sistem Kandang Aktif!*\nMonitor kandang sapi UNMUL menyala.\nKirim /status untuk cek kondisi kandang.",
+        "Markdown");
+
+    // Update OLED: siap
+    tampilOLED(0, 0, "WiFi OK - Siap!");
 }
 
 // ================================================================
-//  LOOP — Diulang TERUS setiap 3 detik
+//  LOOP — Diulang TERUS
 // ================================================================
 void loop() {
-    float suhu   = sensor.readTemperature();
-    float lembab = sensor.readHumidity();
+    static unsigned long waktuKirimTerakhir = 0;
+    static unsigned long waktuBacaTerakhir  = 0;
+    unsigned long sekarang = millis();
 
-    // Validasi data sensor
-    if (isnan(suhu) || isnan(lembab)) {
-        oled.clearDisplay();
-        oled.setTextSize(1);
-        oled.setCursor(0, 20); oled.print("ERROR: Cek Sensor!");
-        oled.display();
-        Serial.println(F("[ERROR] Sensor tidak terbaca!"));
-        delay(2000);
-        return;
+    // ── Baca sensor setiap 2 detik ───────────────────────────────
+    TempAndHumidity data = dhtSensor.getTempAndHumidity();
+    float suhu   = data.temperature;
+    float lembab = data.humidity;
+
+    if (!isnan(suhu) && !isnan(lembab)) {
+        suhu_terakhir   = suhu;
+        lembab_terakhir = lembab;
+
+        // Tentukan status
+        String status;
+        if (suhu >= BATAS_KRITIS)     { status = "!! KRITIS !!"; digitalWrite(PIN_LED_ALARM, HIGH); }
+        else if (suhu >= BATAS_PANAS) { status = ">> PANAS <<";  digitalWrite(PIN_LED_ALARM, HIGH); }
+        else                          { status = "   AMAN :)  "; digitalWrite(PIN_LED_ALARM, LOW);  }
+
+        tampilOLED(suhu, lembab, status);
+
+        Serial.print(F("Suhu: ")); Serial.print(suhu);
+        Serial.print(F("°C | Lembab: ")); Serial.print(lembab);
+        Serial.println(F("%"));
     }
 
-    hitungan_bacaan++;
-
-    // Tampilkan di OLED
-    tampilOLED(suhu, lembab);
-
-    // Log ke Serial Monitor
-    Serial.print(F("[#")); Serial.print(hitungan_bacaan);
-    Serial.print(F("] Suhu: ")); Serial.print(suhu);
-    Serial.print(F("°C | Lembab: ")); Serial.print(lembab);
-    Serial.println(F("%"));
-
-    // ══════════════════════════════════════════════════════════
-    //  LOGIKA ALERT TELEGRAM — 3 Kondisi
-    // ══════════════════════════════════════════════════════════
-
-    if (suhu >= BATAS_KRITIS && !sudah_alert) {
-        // 🚨 KONDISI 1: Suhu SANGAT tinggi (> 35°C) → Darurat!
-        digitalWrite(PIN_LED_ALARM, HIGH);
-        kirimTelegram("🚨", "BAHAYA KRITIS!",
-            "Suhu kandang: " + String(suhu, 1) + String((char)176) + "C\n"
-            "Melebihi 35" + String((char)176) + "C — SANGAT BERBAHAYA!\n"
-            "Sapi butuh pendinginan SEGERA!\n"
-            "Segera hubungi drh. / teknisi!");
+    // ── Kirim alert Telegram jika darurat ────────────────────────
+    if (suhu_terakhir >= BATAS_KRITIS && !sudah_alert) {
+        bot.sendMessage(CHAT_ID,
+            "🚨 *BAHAYA KRITIS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
+            "Melebihi 35°C — Sapi butuh pendinginan SEGERA!\nHubungi drh. / teknisi!", "Markdown");
         sudah_alert = true;
 
-    } else if (suhu >= BATAS_PANAS && !sudah_alert) {
-        // ⚠️ KONDISI 2: Suhu tinggi (> 30°C) → Peringatan
-        digitalWrite(PIN_LED_ALARM, HIGH);
-        kirimTelegram("⚠️", "PERINGATAN SUHU PANAS",
-            "Suhu kandang: " + String(suhu, 1) + String((char)176) + "C\n"
-            "Melewati batas aman 30" + String((char)176) + "C.\n"
-            "Nyalakan kipas / buka ventilasi!");
+    } else if (suhu_terakhir >= BATAS_PANAS && !sudah_alert) {
+        bot.sendMessage(CHAT_ID,
+            "⚠️ *PERINGATAN SUHU PANAS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
+            "Melewati batas aman 30°C.\nNyalakan kipas / buka ventilasi!", "Markdown");
         sudah_alert = true;
 
-    } else if (suhu < BATAS_PANAS) {
-        // ✅ KONDISI 3: Suhu kembali normal
-        digitalWrite(PIN_LED_ALARM, LOW);
-        if (sudah_alert) {
-            kirimTelegram("✅", "KANDANG SUDAH NORMAL",
-                "Suhu turun ke: " + String(suhu, 1) + String((char)176) + "C\n"
-                "Kelembaban: " + String(lembab, 1) + "%\n"
-                "Kondisi kandang kembali aman!");
-            sudah_alert = false;
+    } else if (suhu_terakhir < BATAS_PANAS && sudah_alert) {
+        bot.sendMessage(CHAT_ID,
+            "✅ *Kandang Kembali Normal*\nSuhu: " + String(suhu_terakhir, 1) + "°C\n"
+            "Kelembaban: " + String(lembab_terakhir, 1) + "%", "Markdown");
+        sudah_alert = false;
+    }
+
+    // ── Kirim laporan berkala ke Telegram (tiap 30 detik) ────────
+    if (sekarang - waktuKirimTerakhir >= WAKTU_KIRIM) {
+        waktuKirimTerakhir = sekarang;
+        String laporan = "📊 *Laporan Berkala Kandang*\n";
+        laporan += "🌡 Suhu    : " + String(suhu_terakhir, 1) + "°C\n";
+        laporan += "💧 Lembab : " + String(lembab_terakhir, 1) + "%\n";
+        laporan += (suhu_terakhir < BATAS_PANAS) ? "✅ Status  : AMAN" : "⚠️ Status  : BUTUH PERHATIAN";
+        bot.sendMessage(CHAT_ID, laporan, "Markdown");
+        Serial.println(F("[Telegram] Laporan berkala dikirim."));
+    }
+
+    // ── Cek pesan masuk dari Telegram (tiap 1 detik) ─────────────
+    if (sekarang - waktuBacaTerakhir >= WAKTU_BACA) {
+        waktuBacaTerakhir = sekarang;
+        int pesan = bot.getUpdates(bot.last_message_received + 1);
+        while (pesan) {
+            tanganiPesan(pesan);
+            pesan = bot.getUpdates(bot.last_message_received + 1);
         }
     }
 
-    // ── Laporan rutin setiap 10 bacaan (30 detik) ──────────────
-    if (hitungan_bacaan % 10 == 0) {
-        String status_str = (suhu < BATAS_PANAS) ? "AMAN" : "BUTUH PERHATIAN";
-        kirimTelegram("📊", "Laporan Berkala Kandang",
-            "Suhu   : " + String(suhu, 1) + String((char)176) + "C\n"
-            "Lembab : " + String(lembab, 1) + "%\n"
-            "Status : " + status_str + "\n"
-            "Bacaan ke-" + String(hitungan_bacaan));
-    }
-
-    delay(3000);
+    delay(2000);
 }
 
 // ================================================================
 //  TANTANGAN MAHASISWA:
 //  1. Ubah BATAS_PANAS dari 30 → 25. Apa yang berubah?
-//  2. Tambahkan pesan Telegram saat kelembaban > 85%
-//     (tanda kandang terlalu lembab = risiko jamur)
-//  3. Bisakah kamu tambahkan fitur menerima perintah dari Telegram?
-//     Contoh: kirim "/status" → bot balas dengan suhu terkini
+//  2. Tambahkan perintah /led_on dan /led_off dari Telegram
+//     untuk kontrol LED dari jarak jauh!
+//  3. Tambahkan alert jika kelembaban > 85% (risiko jamur)
 // ================================================================

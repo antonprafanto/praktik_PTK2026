@@ -17,14 +17,16 @@
 
 | File | Keterangan | Download Langsung |
 |------|-----------|:-----------------:|
-| 📊 **Slide Presentasi PPT** | Materi lengkap 20 slide, tema hijau premium | [⬇️ **Download PPT**](https://github.com/antonprafanto/praktik_PTK2026/raw/main/IoT_untuk_Peternakan_UNMUL.pptx) |
-| 🧪 **Kode Arduino (sketch.ino)** | Kode simulasi monitor suhu kandang sapi | [⬇️ Download sketch.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch.ino) |
-| 🔌 **Diagram Rangkaian (diagram.json)** | Rangkaian virtual sensor + LCD + LED | [⬇️ Download diagram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram.json) |
-| 📖 **Panduan Praktikum** | Langkah-langkah Wokwi + soal diskusi | [⬇️ Download Panduan](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/PANDUAN_PRAKTIKUM.md) |
+| 📊 **Slide Presentasi PPT** | Materi lengkap **22 slide**, termasuk Telegram & Wokwi | [⬇️ **Download PPT**](https://github.com/antonprafanto/praktik_PTK2026/raw/main/IoT_untuk_Peternakan_UNMUL.pptx) |
+| 🧪 **Kode Wokwi — Arduino Uno** | Simulasi suhu kandang (tanpa Telegram) | [⬇️ Download sketch.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch.ino) |
+| 🔌 **Diagram Wokwi — Arduino Uno** | Rangkaian virtual: DHT22 + LCD + LED | [⬇️ Download diagram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram.json) |
+| 📱 **Kode Wokwi — ESP32 + Telegram** | Simulasi notifikasi Telegram di Serial Monitor | [⬇️ Download sketch_telegram.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch_telegram.ino) |
+| 🔌 **Diagram Wokwi — ESP32 + Telegram** | Rangkaian ESP32 dengan WiFi virtual | [⬇️ Download diagram_telegram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram_telegram.json) |
+| 📖 **Panduan Praktikum** | Langkah-langkah Wokwi + soal diskusi + tantangan | [⬇️ Download Panduan](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/PANDUAN_PRAKTIKUM.md) |
 
 ---
 
-## 📚 Isi Materi (20 Slide)
+## 📚 Isi Materi (22 Slide)
 
 | # | Topik | Deskripsi |
 |---|-------|-----------|
@@ -40,8 +42,12 @@
 | 10 | 📖 Glosarium | Kamus 10 istilah IoT paling penting |
 | 11 | 🎯 Kuis Interaktif | Tebak mana yang pakai IoT dan mana yang tidak |
 | 12 | 🚀 Peluang Karir | Profesi baru untuk lulusan Fapet di era digital |
-| 13 | **🧪 Praktikum Wokwi** | **Simulasi IoT langsung di browser (GRATIS!)** |
-| 14 | 💡 Kesimpulan | Rangkuman poin kunci materi |
+| 13 | **📱 Monitoring via Telegram Bot** | **HP kamu = dashboard kandang 24 jam!** |
+| 14 | **🔧 Setup Telegram Bot** | **4 langkah mudah buat bot sendiri** |
+| 15 | **🧪 Praktikum Wokwi** | **Simulasi IoT langsung di browser (GRATIS!)** |
+| 16 | **🐄 Proyek Monitor Kandang** | **Rangkaian virtual + kode + penjelasan** |
+| 17 | **📋 Panduan Wokwi** | **6 langkah step-by-step menggunakan simulator** |
+| 18 | 💡 Kesimpulan | Rangkuman poin kunci materi |
 
 ---
 
@@ -49,14 +55,56 @@
 
 > **Wokwi** adalah simulator Arduino/IoT yang **gratis dan berbasis browser**. Kamu bisa mencoba IoT **tanpa membeli hardware apapun!**
 
-### Yang Akan Kita Buat:
+### Ada 2 Level Praktikum:
+
+| Level | Proyek | File |
+|-------|--------|------|
+| 🟢 **Dasar** | Arduino Uno + Sensor + LCD + LED | `sketch.ino` + `diagram.json` |
+| 🔵 **Lanjutan** | ESP32 + Sensor + **Notifikasi Telegram** | `sketch_telegram.ino` + `diagram_telegram.json` |
+
+---
+
+## 📱 Fitur Baru: Monitoring via Telegram Bot
+
+> **ESP32** (versi lebih canggih dari Arduino, punya WiFi bawaan) bisa mengirim notifikasi langsung ke HP lewat **Telegram** saat kandang terlalu panas!
+
+### Alur Kerja Sistem:
 
 ```
-🌡️ Sensor DHT22  →  📺 Layar LCD  →  🔴 LED Alarm
-   (Baca suhu)      (Tampilkan data)   (Nyala jika > 30°C)
+🌡️ Sensor DHT22                    📺 LCD           📱 Telegram di HP
+(Baca Suhu & Lembab)  →  ESP32  →  (Tampilkan)  +  (Kirim Notifikasi)
+                           ↕
+                         💡 LED
+                      (Nyala jika panas)
 ```
 
-Simulasi ini meniru cara kerja **sensor suhu kandang sapi** yang sesungguhnya!
+### Contoh Notifikasi yang Akan Muncul di HP Kamu:
+
+| Kondisi Suhu | Notifikasi Telegram |
+|-------------|---------------------|
+| Suhu > 35°C | 🚨 **BAHAYA KRITIS!** — Suhu 37.2°C, sapi butuh pendinginan SEGERA! |
+| Suhu > 30°C | ⚠️ **PERINGATAN** — Suhu 31.5°C, melewati batas aman, nyalakan kipas! |
+| Suhu Normal | ✅ **KANDANG NORMAL** — Suhu 26.8°C, kondisi aman |
+| Setiap 10 menit | 📊 **Laporan Berkala** — Suhu, kelembaban, dan status kandang |
+
+> **Di Simulator Wokwi:** notifikasi Telegram ditampilkan di **Serial Monitor** (kotak hitam di bawah simulasi)
+> **Di Hardware Nyata:** notifikasi langsung terkirim ke HP kamu via aplikasi Telegram
+
+### Setup Bot Telegram (Untuk Hardware Nyata — 4 Langkah):
+
+**Langkah 1** — Buka Telegram → cari **@BotFather** → kirim `/newbot` → simpan TOKEN yang diberikan
+
+**Langkah 2** — Cari **@userinfobot** → kirim `/start` → catat CHAT ID angka kamu
+
+**Langkah 3** — Buka `sketch_telegram.ino` → isi bagian ini:
+```cpp
+const char* WIFI_SSID  = "NamaWiFiKandang";     // ← WiFi kamu
+const char* WIFI_PASS  = "PasswordWiFi";         // ← Password WiFi
+const String BOT_TOKEN = "123456:ABCDEF_TOKEN";  // ← Dari BotFather
+const String CHAT_ID   = "987654321";            // ← ID kamu
+```
+
+**Langkah 4** — Upload ke ESP32 → kirim `/start` ke bot kamu → selesai! 🎉
 
 ---
 

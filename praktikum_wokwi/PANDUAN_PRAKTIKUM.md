@@ -7,9 +7,9 @@
 ## 📋 Ada 2 Level Praktikum
 
 | Level | Platform | Fitur | File yang Dipakai |
-|-------|----------|-------|--------------------|
+|-------|----------|-------|-----------------|
 | 🟢 **Level Dasar** | Arduino Uno | Sensor + LCD + LED alarm | `sketch.ino` + `diagram.json` |
-| 🔵 **Level Lanjutan** | ESP32 (punya WiFi) | Sensor + LCD + LED + **Notifikasi Telegram ke HP** | `sketch_telegram.ino` + `diagram_telegram.json` |
+| 🔵 **Level Lanjutan** | ESP32 (punya WiFi) | Sensor + **OLED** + LED + **Notifikasi Telegram ke HP** | `sketch_telegram.ino` + `diagram_telegram.json` |
 
 > 💡 **Mulai dari Level Dasar** terlebih dahulu. Setelah berhasil, lanjutkan ke Level Lanjutan!
 
@@ -63,10 +63,9 @@ Simulasi **alat monitor kandang sapi virtual** yang menampilkan:
 
 ### Apa Bedanya dengan Level Dasar?
 
-Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, punya WiFi bawaan). ESP32 bisa mengirim **notifikasi ke Telegram** saat kandang terlalu panas!
+Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, punya WiFi bawaan). ESP32 dilengkapi layar **OLED SSD1306** (lebih modern dari LCD biasa!) dan bisa mengirim **notifikasi ke Telegram** saat kandang terlalu panas!
 
-**Di simulator Wokwi:** Notifikasi Telegram akan muncul di **Serial Monitor** (kotak hitam di bawah area simulasi). Ini simulasinya!
-**Di hardware nyata:** Notifikasi langsung masuk ke HP lewat aplikasi Telegram!
+> 💡 **Kenapa OLED?** OLED hanya butuh **2 kabel data** (SDA + SCL via I2C), jauh lebih simpel dari LCD yang butuh 6 kabel data. Tampilan juga lebih keren!
 
 ### Langkah-Langkah Level Lanjutan
 
@@ -115,7 +114,8 @@ Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, pu
 | **Arduino Uno** | ✅ | — | Seperti CPU di HP biasa |
 | **ESP32** | — | ✅ | Seperti HP Android (ada WiFi!) |
 | **DHT22** | ✅ | ✅ | Termometer digital kandang |
-| **LCD 16x2** | ✅ | ✅ | Layar display kandang |
+| **LCD 16x2** | ✅ | — | Layar display lama |
+| **OLED SSD1306** | — | ✅ | Layar modern (2 kabel saja!) |
 | **LED Merah** | ✅ | ✅ | Lampu darurat kandang |
 | **Telegram Bot** | — | ✅ (simulasi) | Notifikasi WhatsApp/HP peternak |
 
@@ -157,11 +157,11 @@ Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, pu
 
 | Gejala | Penyebab | Solusi |
 |--------|----------|--------|
-| **LCD blank/kosong** | GPIO 5 ESP32 = strapping pin (konflik saat boot) | Pastikan pakai **GPIO 4** untuk D7 di diagram — bukan GPIO 5! |
+| **OLED tidak muncul** | Library belum terdeteksi | Klik ▶ Play lagi — Wokwi auto-install `Adafruit SSD1306` |
 | **Notifikasi Telegram tidak muncul** | Serial Monitor belum dibuka | Klik ikon **terminal hitam** di bawah area simulasi |
 | **Error: "library not found"** | Library belum terdeteksi Wokwi | Klik tombol ▶ Play sekali lagi, Wokwi akan auto-install |
 | **Suhu tidak berubah** | Belum klik sensor DHT22 | Klik komponen DHT22 → geser slider temperature di panel kanan |
-| **Layar LCD gelap** | Tegangan salah | Pastikan VDD → 3V3 (bukan 5V!) dan A (backlight) → 3V3 |
+| **OLED gelap total** | Tegangan salah | Pastikan VCC → 3V3 dan SDA/SCL sudah terhubung |
 
 > ⚠️ **Penting untuk mahasiswa**: Jika LCD tetap blank setelah dicoba, cek kembali apakah **diagram_telegram.json** sudah di-paste dengan benar dan lengkap (dari baris `{` sampai `}` terakhir).
 

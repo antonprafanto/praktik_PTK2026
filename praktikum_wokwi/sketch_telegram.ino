@@ -1,5 +1,5 @@
 // ================================================================
-//  PROYEK WOKWI v2: Monitor Kandang + TELEGRAM BOT (ESP32)
+//  PROYEK WOKWI v3: Monitor Kandang + TELEGRAM BOT (ESP32 + OLED)
 //  Fakultas Peternakan — Universitas Mulawarman 2026
 //  Simulator: https://wokwi.com
 // ================================================================
@@ -7,20 +7,25 @@
 //  KOMPONEN VIRTUAL (ESP32 — punya WiFi bawaan!):
 //  - 1x ESP32 DevKit V1  (otak + WiFi)
 //  - 1x Sensor DHT22     (suhu & kelembaban)
-//  - 1x LCD 16x2         (layar penampil)
+//  - 1x OLED SSD1306 0.96" I2C  (layar penampil — lebih mudah!)
 //  - 1x LED Merah        (lampu alarm fisik)
+//
+//  KEUNGGULAN OLED vs LCD:
+//  ✅ Hanya 2 kabel data (SDA + SCL) — jauh lebih simpel!
+//  ✅ Tidak ada masalah strapping pin
+//  ✅ Tampilan lebih keren & modern
 //
 //  CARA KERJA:
 //  ✅ Di SIMULATOR Wokwi: notifikasi Telegram ditampilkan
 //     di Serial Monitor (kotak hitam di bawah simulator)
 //  ✅ Di HARDWARE NYATA:  notifikasi terkirim ke HP kamu
 //     lewat aplikasi Telegram
-//
-//  Aktifkan bagian kode yang dikomentari (#) untuk hardware asli!
 // ================================================================
 
-#include <LiquidCrystal.h>   // Library LCD
-#include <DHT.h>             // Library sensor suhu DHT
+#include <Wire.h>                   // Library I2C (untuk OLED)
+#include <Adafruit_GFX.h>           // Library grafis dasar OLED
+#include <Adafruit_SSD1306.h>       // Library OLED SSD1306
+#include <DHT.h>                    // Library sensor suhu DHT
 
 // ── Untuk Hardware Nyata: Hapus "//" dari baris-baris ini ──────
 // #include <WiFi.h>
@@ -35,37 +40,82 @@
 // UniversalTelegramBot bot(BOT_TOKEN, klien);
 // ───────────────────────────────────────────────────────────────
 
-// ── Konfigurasi Pin ESP32 ──────────────────────────────────────
-#define PIN_SENSOR      15     // DHT22 data → GPIO 15
-#define JENIS_SENSOR    DHT22
-#define PIN_LED_ALARM   2      // LED Merah → GPIO 2 (LED bawaan ESP32)
+// ── Konfigurasi OLED ──────────────────────────────────────────
+#define OLED_WIDTH   128
+#define OLED_HEIGHT   64
+#define OLED_ADDRESS 0x3C   // Alamat I2C OLED (biasanya 0x3C)
+// SDA → GPIO 21 (default I2C ESP32)
+// SCL → GPIO 22 (default I2C ESP32)
+Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
 
-// ── Batas Suhu Kandang Sapi ────────────────────────────────────
-#define BATAS_PANAS     30.0   // ⚠️ Peringatan (°C)
-#define BATAS_KRITIS    35.0   // 🚨 Bahaya kritis (°C)
-
-// ── LCD: LiquidCrystal(RS, E, D4, D5, D6, D7) ─────────────────
-// ⚠️  GPIO 5 di ESP32 adalah "strapping pin" (untuk mode boot)
-//     → bisa menyebabkan LCD tidak muncul! Pakai GPIO 4 sebagai gantinya.
-LiquidCrystal lcd(23, 22, 21, 19, 18, 4);   // D7 = GPIO 4 (bukan 5!)
-
-// ── Sensor DHT22 ──────────────────────────────────────────────
+// ── Konfigurasi Sensor DHT22 ──────────────────────────────────
+#define PIN_SENSOR    15    // DHT22 data → GPIO 15
+#define JENIS_SENSOR  DHT22
 DHT sensor(PIN_SENSOR, JENIS_SENSOR);
 
+// ── Konfigurasi LED Alarm ─────────────────────────────────────
+#define PIN_LED_ALARM  2    // LED Merah → GPIO 2
+
+// ── Batas Suhu Kandang Sapi ────────────────────────────────────
+#define BATAS_PANAS   30.0  // ⚠️ Peringatan (°C)
+#define BATAS_KRITIS  35.0  // 🚨 Bahaya kritis (°C)
+
 // ── Variabel Status ───────────────────────────────────────────
-bool  sudah_alert       = false;
-int   hitungan_bacaan   = 0;
+bool  sudah_alert     = false;
+int   hitungan_bacaan = 0;
+
+// ================================================================
+//  FUNGSI: Tampilkan data di OLED
+// ================================================================
+void tampilOLED(float suhu, float lembab) {
+    oled.clearDisplay();
+    oled.setTextColor(SSD1306_WHITE);
+
+    // ── Baris 1: Judul ─────────────────────────────────────────
+    oled.setTextSize(1);
+    oled.setCursor(10, 0);
+    oled.print("KANDANG SAPI UNMUL");
+
+    // ── Garis pemisah ──────────────────────────────────────────
+    oled.drawLine(0, 10, 127, 10, SSD1306_WHITE);
+
+    // ── Baris 2: Suhu (teks besar) ─────────────────────────────
+    oled.setTextSize(2);
+    oled.setCursor(0, 16);
+    oled.print("T:");
+    oled.print(suhu, 1);
+    oled.print("C");
+
+    // ── Baris 3: Kelembaban ────────────────────────────────────
+    oled.setTextSize(1);
+    oled.setCursor(0, 38);
+    oled.print("Kelembaban: ");
+    oled.print(lembab, 1);
+    oled.print("%");
+
+    // ── Baris 4: Status ────────────────────────────────────────
+    oled.setCursor(0, 52);
+    if (suhu >= BATAS_KRITIS) {
+        oled.print("!! KRITIS - BAHAYA !!");
+    } else if (suhu >= BATAS_PANAS) {
+        oled.print(">> PANAS - Waspada! ");
+    } else {
+        oled.print("   STATUS: AMAN :)  ");
+    }
+
+    oled.display();
+}
 
 // ================================================================
 //  FUNGSI: Kirim Notifikasi ke Telegram
-//  Di simulator → tampil di Serial Monitor (kotak hitam)
+//  Di simulator → tampil di Serial Monitor
 //  Di hardware  → terkirim ke HP lewat Telegram
 // ================================================================
 void kirimTelegram(String ikon, String judul, String isi) {
     // ── [SIMULATOR] Tampilkan di Serial Monitor ─────────────────
     Serial.println();
     Serial.println(F("╔══════════════════════════════════════╗"));
-    Serial.println(F("║  📱  NOTIFIKASI TELEGRAM BOT          ║"));
+    Serial.println(F("║  📱  NOTIFIKASI TELEGRAM BOT         ║"));
     Serial.println(F("╠══════════════════════════════════════╣"));
     Serial.print(F("║  Dari : @KandangSapiUNMUL_Bot        "));
     Serial.println(F("║"));
@@ -80,50 +130,36 @@ void kirimTelegram(String ikon, String judul, String isi) {
 }
 
 // ================================================================
-//  FUNGSI: Tampilkan Ikon Status di LCD Baris ke-2
-// ================================================================
-void tampilStatusLCD(float suhu) {
-    lcd.setCursor(0, 1);
-    if (suhu >= BATAS_KRITIS) {
-        lcd.print("STATUS: KRITIS!!"); // Darurat
-    } else if (suhu >= BATAS_PANAS) {
-        lcd.print("STATUS: PANAS ! "); // Peringatan
-    } else {
-        lcd.print("STATUS: AMAN :) "); // Normal
-    }
-}
-
-// ================================================================
 //  SETUP — Dijalankan SEKALI saat ESP32 menyala
 // ================================================================
 void setup() {
     Serial.begin(115200);
-    delay(500);   // ← Beri waktu ESP32 stabilisasi setelah boot
+    delay(500);   // Tunggu ESP32 stabil
 
-    // Inisialisasi LCD
-    lcd.begin(16, 2);
-    delay(100);   // ← Beri waktu LCD inisialisasi
-    lcd.clear();
+    // Inisialisasi OLED
+    Wire.begin(21, 22);   // SDA=21, SCL=22 (default I2C ESP32)
+    if (!oled.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+        Serial.println(F("[ERROR] OLED tidak terdeteksi!"));
+        while (true);   // Berhenti jika OLED tidak ditemukan
+    }
 
+    // Inisialisasi sensor & LED
     sensor.begin();
     pinMode(PIN_LED_ALARM, OUTPUT);
 
-    // Splash screen
-    lcd.setCursor(0, 0); lcd.print(" KANDANG PINTAR ");
-    lcd.setCursor(0, 1); lcd.print("  IoT+Telegram  ");
+    // Splash screen OLED
+    oled.clearDisplay();
+    oled.setTextSize(1);
+    oled.setTextColor(SSD1306_WHITE);
+    oled.setCursor(15, 10); oled.print("KANDANG PINTAR");
+    oled.setCursor(10, 25); oled.print("IoT + Telegram Bot");
+    oled.setCursor(5,  40); oled.print("Fapet UNMUL 2026");
+    oled.display();
     delay(2500);
-    lcd.clear();
-
-    // Untuk hardware nyata — koneksi WiFi:
-    // Serial.print("Menghubungkan ke WiFi");
-    // WiFi.begin(WIFI_SSID, WIFI_PASS);
-    // while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-    // Serial.println(" Terhubung!");
-    // klien.setCACert(TELEGRAM_CERTIFICATE_ROOT);
 
     Serial.println(F("\n============================================"));
     Serial.println(F("   SISTEM MONITOR KANDANG SAPI — AKTIF!   "));
-    Serial.println(F("   ESP32 + DHT22 + LCD + Telegram Bot      "));
+    Serial.println(F("   ESP32 + DHT22 + OLED + Telegram Bot     "));
     Serial.println(F("============================================"));
     Serial.println(F("   Perhatikan kotak notifikasi Telegram    "));
     Serial.println(F("   yang muncul di Serial Monitor ini!       "));
@@ -143,7 +179,10 @@ void loop() {
 
     // Validasi data sensor
     if (isnan(suhu) || isnan(lembab)) {
-        lcd.setCursor(0, 0); lcd.print("ERROR: Cek Sensor");
+        oled.clearDisplay();
+        oled.setTextSize(1);
+        oled.setCursor(0, 20); oled.print("ERROR: Cek Sensor!");
+        oled.display();
         Serial.println(F("[ERROR] Sensor tidak terbaca!"));
         delay(2000);
         return;
@@ -151,17 +190,10 @@ void loop() {
 
     hitungan_bacaan++;
 
-    // ── Tampilkan di LCD Baris 1 (Suhu) ────────────────────────
-    lcd.setCursor(0, 0);
-    lcd.print("Suhu: ");
-    lcd.print(suhu, 1);
-    lcd.print((char)223);  // Simbol °
-    lcd.print("C  ");
+    // Tampilkan di OLED
+    tampilOLED(suhu, lembab);
 
-    // ── Tampilkan status di LCD Baris 2 ────────────────────────
-    tampilStatusLCD(suhu);
-
-    // ── Log sederhana ke Serial Monitor ────────────────────────
+    // Log ke Serial Monitor
     Serial.print(F("[#")); Serial.print(hitungan_bacaan);
     Serial.print(F("] Suhu: ")); Serial.print(suhu);
     Serial.print(F("°C | Lembab: ")); Serial.print(lembab);
@@ -191,7 +223,7 @@ void loop() {
         sudah_alert = true;
 
     } else if (suhu < BATAS_PANAS) {
-        // ✅ KONDISI 3: Suhu kembali normal → Kirim laporan baik
+        // ✅ KONDISI 3: Suhu kembali normal
         digitalWrite(PIN_LED_ALARM, LOW);
         if (sudah_alert) {
             kirimTelegram("✅", "KANDANG SUDAH NORMAL",

@@ -45,7 +45,9 @@
 #define BATAS_KRITIS    35.0   // 🚨 Bahaya kritis (°C)
 
 // ── LCD: LiquidCrystal(RS, E, D4, D5, D6, D7) ─────────────────
-LiquidCrystal lcd(23, 22, 21, 19, 18, 5);
+// ⚠️  GPIO 5 di ESP32 adalah "strapping pin" (untuk mode boot)
+//     → bisa menyebabkan LCD tidak muncul! Pakai GPIO 4 sebagai gantinya.
+LiquidCrystal lcd(23, 22, 21, 19, 18, 4);   // D7 = GPIO 4 (bukan 5!)
 
 // ── Sensor DHT22 ──────────────────────────────────────────────
 DHT sensor(PIN_SENSOR, JENIS_SENSOR);
@@ -96,8 +98,13 @@ void tampilStatusLCD(float suhu) {
 // ================================================================
 void setup() {
     Serial.begin(115200);
+    delay(500);   // ← Beri waktu ESP32 stabilisasi setelah boot
 
+    // Inisialisasi LCD
     lcd.begin(16, 2);
+    delay(100);   // ← Beri waktu LCD inisialisasi
+    lcd.clear();
+
     sensor.begin();
     pinMode(PIN_LED_ALARM, OUTPUT);
 

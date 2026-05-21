@@ -153,4 +153,18 @@ Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, pu
 
 ---
 
+## 🔧 Troubleshooting (Kalau Ada Masalah)
+
+| Gejala | Penyebab | Solusi |
+|--------|----------|--------|
+| **LCD blank/kosong** | GPIO 5 ESP32 = strapping pin (konflik saat boot) | Pastikan pakai **GPIO 4** untuk D7 di diagram — bukan GPIO 5! |
+| **Notifikasi Telegram tidak muncul** | Serial Monitor belum dibuka | Klik ikon **terminal hitam** di bawah area simulasi |
+| **Error: "library not found"** | Library belum terdeteksi Wokwi | Klik tombol ▶ Play sekali lagi, Wokwi akan auto-install |
+| **Suhu tidak berubah** | Belum klik sensor DHT22 | Klik komponen DHT22 → geser slider temperature di panel kanan |
+| **Layar LCD gelap** | Tegangan salah | Pastikan VDD → 3V3 (bukan 5V!) dan A (backlight) → 3V3 |
+
+> ⚠️ **Penting untuk mahasiswa**: Jika LCD tetap blank setelah dicoba, cek kembali apakah **diagram_telegram.json** sudah di-paste dengan benar dan lengkap (dari baris `{` sampai `}` terakhir).
+
+---
+
 *Dokumen ini dibuat untuk keperluan pembelajaran — Fapet UNMUL 2026*

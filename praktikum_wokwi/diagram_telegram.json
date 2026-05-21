@@ -53,7 +53,7 @@
     ["lcd1:D4",     "esp:21",     "green",  []],
     ["lcd1:D5",     "esp:19",     "green",  []],
     ["lcd1:D6",     "esp:18",     "green",  []],
-    ["lcd1:D7",     "esp:5",      "green",  []],
+    ["lcd1:D7",     "esp:4",      "green",  []],
     ["lcd1:A",      "esp:3V3",    "red",    []],
     ["lcd1:K",      "esp:GND.1",  "black",  []],
 

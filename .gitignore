@@ -1,0 +1,7 @@
+﻿# File internal/script generator — tidak perlu di-push
+generate_iot_ppt*.py
+add_wokwi_slides.py
+audit_ppt.py
+audit_semua.py
+patch_bounds.py
+wokwi_kandang_sapi/

@@ -44,6 +44,9 @@ DHT sensor(PIN_SENSOR, JENIS_SENSOR);
 // SETUP: Dijalankan SEKALI saat Arduino pertama menyala
 // ============================================================
 void setup() {
+  // Memulai komunikasi Serial (untuk melihat data di Serial Monitor)
+  Serial.begin(9600);
+
   // Memulai layar LCD (16 kolom, 2 baris)
   lcd.begin(16, 2);
 
@@ -52,7 +55,7 @@ void setup() {
 
   // Mengatur pin LED sebagai OUTPUT (pengirim sinyal)
   pinMode(PIN_LED_ALARM, OUTPUT);
-  
+
   // Tampilkan pesan pembuka di LCD
   lcd.setCursor(0, 0);
   lcd.print("  KANDANG SAPI  ");
@@ -60,6 +63,11 @@ void setup() {
   lcd.print("Monitor Aktif...");
   delay(2500);     // Tunggu 2.5 detik
   lcd.clear();     // Bersihkan layar
+
+  Serial.println(F("============================"));
+  Serial.println(F("  Monitor Kandang Sapi Aktif"));
+  Serial.println(F("  Fapet UNMUL — IoT 2026"));
+  Serial.println(F("============================"));
 }
 
 // ============================================================
@@ -79,7 +87,7 @@ void loop() {
     return;   // Ulangi dari awal loop
   }
 
-  // --- Langkah 3: Tampilkan data di LCD ---
+  // --- Langkah 3: Tampilkan data di LCD & Serial Monitor ---
   lcd.setCursor(0, 0);
   lcd.print("Suhu  : ");
   lcd.print(suhu_C, 1);       // 1 angka di belakang koma
@@ -90,6 +98,10 @@ void loop() {
   lcd.print("Lembab: ");
   lcd.print(kelembaban, 1);
   lcd.print(" %   ");
+
+  // Log ke Serial Monitor (untuk debugging & monitoring)
+  Serial.print(F("Suhu: ")); Serial.print(suhu_C); Serial.print(F("°C  |  "));
+  Serial.print(F("Lembab: ")); Serial.print(kelembaban); Serial.println(F("%"));
 
   // --- Langkah 4: Nyalakan LED alarm jika kandang terlalu panas ---
   if (suhu_C > BATAS_SUHU_PANAS) {

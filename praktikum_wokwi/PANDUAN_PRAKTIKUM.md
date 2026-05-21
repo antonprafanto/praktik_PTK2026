@@ -73,6 +73,16 @@ Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, pu
 1. Buka **https://wokwi.com**
 2. Klik **"New Project"** → pilih **"ESP32"** (bukan Arduino Uno!)
 
+#### LANGKAH 2B: Siapkan Bot Telegram (untuk hardware nyata / opsional di Wokwi)
+
+> 💡 Di Wokwi, kamu bisa **skip** bagian ini dulu dan coba simulasi dulu. Telegram sungguhan hanya dibutuhkan saat pakai hardware ESP32 nyata.
+
+| Langkah | Caranya |
+|---------|--------|
+| **1. Buat Bot** | Buka Telegram → cari **[@BotFather](https://t.me/BotFather)** → kirim `/newbot` → ikuti petunjuk → **simpan TOKEN** |
+| **2. Dapat CHAT_ID** | Cari **[@myidbot](https://t.me/myidbot)** → kirim `/start` → **ID angka langsung muncul** |
+| **3. Isi ke kode** | Buka `sketch_telegram.ino` → ganti `MASUKKAN_TOKEN_BOT_KAMU_DISINI` dan `MASUKKAN_CHAT_ID_KAMU_DISINI` |
+
 #### LANGKAH 3: Masukkan Kode ESP32 + Telegram
 1. Klik tab **sketch.ino** di Wokwi
 2. Hapus semua → Ctrl+A → Delete
@@ -81,6 +91,12 @@ Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, pu
 #### LANGKAH 4: Pasang Rangkaian ESP32
 1. Klik tab **diagram.json** di Wokwi
 2. Hapus semua → download **[⬇️ diagram_telegram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram_telegram.json)** → buka → salin → tempel
+
+#### LANGKAH 4B: ⚠️ Tambahkan libraries.txt (WAJIB!)
+1. Di Wokwi, klik ikon **`+`** (tambah file) di panel kiri
+2. Beri nama file: **`libraries.txt`** (persis seperti ini!)
+3. Download **[⬇️ libraries.txt](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/libraries.txt)** → buka → salin semua → tempel
+4. Tanpa file ini, Wokwi **tidak bisa menemukan library** dan kode tidak akan jalan!
 
 #### LANGKAH 5: Jalankan & Amati Serial Monitor
 1. Klik **▶ Play** untuk mulai simulasi
@@ -147,7 +163,8 @@ Di level ini, kita pakai **ESP32** (chip yang lebih canggih dari Arduino Uno, pu
 
 ## Link Berguna
 - 🌐 Wokwi Simulator: https://wokwi.com
-- 📱 Buat Bot Telegram: https://t.me/BotFather
+- 📱 Buat Bot Telegram : https://t.me/BotFather
+- 🆔 Dapat CHAT ID    : https://t.me/myidbot
 - 🎥 Tutorial Wokwi Bahasa Indonesia: cari "Wokwi Arduino Tutorial Indonesia" di YouTube
 - 📦 Library Telegram untuk ESP32: cari "UniversalTelegramBot" di Arduino Library Manager
 

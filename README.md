@@ -18,10 +18,11 @@
 | File | Keterangan | Download Langsung |
 |------|-----------|:-----------------:|
 | 📊 **Slide Presentasi PPT** | Materi lengkap **22 slide**, termasuk Telegram & Wokwi | [⬇️ **Download PPT**](https://github.com/antonprafanto/praktik_PTK2026/raw/main/IoT_untuk_Peternakan_UNMUL.pptx) |
-| 🧪 **Kode Wokwi — Arduino Uno** | Simulasi suhu kandang (tanpa Telegram) | [⬇️ Download sketch.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch.ino) |
+| 🧪 **Kode Wokwi — Arduino Uno** | Simulasi suhu kandang (Level Dasar) | [⬇️ Download sketch.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch.ino) |
 | 🔌 **Diagram Wokwi — Arduino Uno** | Rangkaian virtual: DHT22 + LCD + LED | [⬇️ Download diagram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram.json) |
-| 📱 **Kode Wokwi — ESP32 + Telegram** | Simulasi notifikasi Telegram di Serial Monitor | [⬇️ Download sketch_telegram.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch_telegram.ino) |
-| 🔌 **Diagram Wokwi — ESP32 + Telegram** | Rangkaian ESP32 dengan WiFi virtual | [⬇️ Download diagram_telegram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram_telegram.json) |
+| 📱 **Kode Wokwi — ESP32 + Telegram** | Monitoring kandang + notifikasi Telegram nyata | [⬇️ Download sketch_telegram.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch_telegram.ino) |
+| 🔌 **Diagram Wokwi — ESP32 + Telegram** | Rangkaian ESP32: OLED + DHT22 + LED | [⬇️ Download diagram_telegram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram_telegram.json) |
+| 📦 **Library List — ESP32** | ⚠️ **Wajib diunggah ke Wokwi** agar library terinstall otomatis | [⬇️ Download libraries.txt](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/libraries.txt) |
 | 📖 **Panduan Praktikum** | Langkah-langkah Wokwi + soal diskusi + tantangan | [⬇️ Download Panduan](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/PANDUAN_PRAKTIKUM.md) |
 
 ---
@@ -60,7 +61,7 @@
 | Level | Platform | Fitur | File |
 |-------|----------|-------|------|
 | 🟢 **Level Dasar** | Arduino Uno | Sensor + LCD + LED alarm | `sketch.ino` + `diagram.json` |
-| 🔵 **Level Lanjutan** | ESP32 (punya WiFi) | Sensor + LCD + LED + **Notifikasi Telegram ke HP** | `sketch_telegram.ino` + `diagram_telegram.json` |
+| 🔵 **Level Lanjutan** | ESP32 + WiFi | Sensor + **OLED** + LED + **Telegram nyata (2 arah!)** | `sketch_telegram.ino` + `diagram_telegram.json` + `libraries.txt` |
 
 ---
 
@@ -71,11 +72,11 @@
 ### Alur Kerja Sistem:
 
 ```
-🌡️ Sensor DHT22                    📺 LCD           📱 Telegram di HP
-(Baca Suhu & Lembab)  →  ESP32  →  (Tampilkan)  +  (Kirim Notifikasi)
-                           ↕
-                         💡 LED
-                      (Nyala jika panas)
+🌡️ Sensor DHT22                  📺 OLED          📱 Telegram di HP
+(Baca Suhu & Lembab) →  ESP32  → (Tampilkan)  +  (Kirim & Terima Pesan)
+                          ↕
+                        💡 LED
+                     (Nyala jika panas)
 ```
 
 ### Contoh Notifikasi yang Akan Muncul di HP Kamu:
@@ -94,17 +95,17 @@
 
 **Langkah 1** — Buka Telegram → cari **@BotFather** → kirim `/newbot` → simpan TOKEN yang diberikan
 
-**Langkah 2** — Cari **@userinfobot** → kirim `/start` → catat CHAT ID angka kamu
+**Langkah 2** — Cari **@myidbot** di Telegram → kirim `/start` → catat CHAT ID angka kamu
 
 **Langkah 3** — Buka `sketch_telegram.ino` → isi bagian ini:
 ```cpp
-const char* WIFI_SSID  = "NamaWiFiKandang";     // ← WiFi kamu
-const char* WIFI_PASS  = "PasswordWiFi";         // ← Password WiFi
-const String BOT_TOKEN = "123456:ABCDEF_TOKEN";  // ← Dari BotFather
-const String CHAT_ID   = "987654321";            // ← ID kamu
+#define BOTtoken  "123456789:ABCDEF_TOKEN_DARI_BOTFATHER"  // ← Dari BotFather
+#define CHAT_ID   "987654321"                              // ← ID kamu
+// WiFi di Wokwi: sudah otomatis pakai "Wokwi-GUEST" (tidak perlu diubah!)
+// WiFi di hardware nyata: ganti "Wokwi-GUEST" dengan nama WiFi kandang
 ```
 
-**Langkah 4** — Upload ke ESP32 → kirim `/start` ke bot kamu → selesai! 🎉
+**Langkah 4** — Upload ke ESP32 → buka Serial Monitor → kirim `/start` ke bot kamu → selesai! 🎉
 
 ---
 
@@ -208,7 +209,8 @@ praktik_PTK2026/
 │   ├── 🟢 sketch.ino                       ← [Level Dasar]   Kode Arduino Uno
 │   ├── 🟢 diagram.json                     ← [Level Dasar]   Rangkaian Arduino Uno
 │   ├── 🔵 sketch_telegram.ino              ← [Level Lanjutan] Kode ESP32 + Telegram
-│   ├── 🔵 diagram_telegram.json            ← [Level Lanjutan] Rangkaian ESP32
+│   ├── 🔵 diagram_telegram.json            ← [Level Lanjutan] Rangkaian ESP32 + OLED
+│   ├── 📦 libraries.txt                   ← [Level Lanjutan] ⚠️ WAJIB ada di Wokwi!
 │   └── 📖 PANDUAN_PRAKTIKUM.md            ← Panduan + soal diskusi + tantangan
 │
 └── 📄 README.md                            ← Halaman ini

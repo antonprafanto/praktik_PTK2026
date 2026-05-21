@@ -20,6 +20,7 @@
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <ArduinoJson.h>             // ← Wajib ada sebelum UniversalTelegramBot!
 #include <UniversalTelegramBot.h>
 #include "DHTesp.h"                  // Library DHT khusus ESP32
 #include <Wire.h>
@@ -32,7 +33,7 @@ const char* password = "";
 
 // ── Telegram Bot (Ganti dengan token & chat_id milikmu!) ──────
 // Cara dapat BOTtoken: Chat @BotFather di Telegram → /newbot
-// Cara dapat CHAT_ID:  Chat @userinfobot di Telegram → /start
+// Cara dapat CHAT_ID:  Chat @myidbot di Telegram → kirim /start → ID langsung muncul!
 #define BOTtoken  "MASUKKAN_TOKEN_BOT_KAMU_DISINI"
 #define CHAT_ID   "MASUKKAN_CHAT_ID_KAMU_DISINI"
 
@@ -63,9 +64,11 @@ UniversalTelegramBot bot(BOTtoken, klien);
 DHTesp             dhtSensor;
 
 // ── Variabel Status ───────────────────────────────────────────
-bool  sudah_alert     = false;
-float suhu_terakhir   = 0;
-float lembab_terakhir = 0;
+bool  sudah_alert        = false;
+bool  sensor_valid       = false;   // ← Cegah alert palsu saat boot (suhu=0)
+float suhu_terakhir      = 0;
+float lembab_terakhir    = 0;
+unsigned long waktu_baca_dht = 0;  // ← Guard interval minimum DHTesp (2 detik)
 
 // ================================================================
 //  FUNGSI: Tampilkan data di OLED
@@ -196,60 +199,79 @@ void loop() {
     static unsigned long waktuBacaTerakhir  = 0;
     unsigned long sekarang = millis();
 
-    // ── Baca sensor setiap 2 detik ───────────────────────────────
-    TempAndHumidity data = dhtSensor.getTempAndHumidity();
-    float suhu   = data.temperature;
-    float lembab = data.humidity;
+    // ── Baca sensor (dengan guard interval minimum DHTesp: 2 detik) ─
+    if (sekarang - waktu_baca_dht >= 2000) {
+        waktu_baca_dht = sekarang;
 
-    if (!isnan(suhu) && !isnan(lembab)) {
-        suhu_terakhir   = suhu;
-        lembab_terakhir = lembab;
+        TempAndHumidity data = dhtSensor.getTempAndHumidity();
+        float suhu   = data.temperature;
+        float lembab = data.humidity;
 
-        // Tentukan status
-        String status;
-        if (suhu >= BATAS_KRITIS)     { status = "!! KRITIS !!"; digitalWrite(PIN_LED_ALARM, HIGH); }
-        else if (suhu >= BATAS_PANAS) { status = ">> PANAS <<";  digitalWrite(PIN_LED_ALARM, HIGH); }
-        else                          { status = "   AMAN :)  "; digitalWrite(PIN_LED_ALARM, LOW);  }
+        if (!isnan(suhu) && !isnan(lembab)) {
+            suhu_terakhir   = suhu;
+            lembab_terakhir = lembab;
+            sensor_valid    = true;   // ← Tandai: data sensor sudah valid
 
-        tampilOLED(suhu, lembab, status);
+            String status;
+            if (suhu >= BATAS_KRITIS)     { status = "!! KRITIS !!"; digitalWrite(PIN_LED_ALARM, HIGH); }
+            else if (suhu >= BATAS_PANAS) { status = ">> PANAS <<";  digitalWrite(PIN_LED_ALARM, HIGH); }
+            else                          { status = "   AMAN :)  "; digitalWrite(PIN_LED_ALARM, LOW);  }
 
-        Serial.print(F("Suhu: ")); Serial.print(suhu);
-        Serial.print(F("°C | Lembab: ")); Serial.print(lembab);
-        Serial.println(F("%"));
+            tampilOLED(suhu, lembab, status);
+
+            Serial.print(F("Suhu: ")); Serial.print(suhu, 1);
+            Serial.print(F("C | Lembab: ")); Serial.print(lembab, 1);
+            Serial.println(F("%"));
+        } else {
+            // Tampilkan error di OLED jika sensor gagal baca
+            oled.clearDisplay();
+            oled.setTextSize(1);
+            oled.setTextColor(SSD1306_WHITE);
+            oled.setCursor(0, 20); oled.print("ERROR: Cek Sensor!");
+            oled.setCursor(0, 36); oled.print("DHT22 tidak merespons");
+            oled.display();
+            Serial.println(F("[ERROR] Sensor DHT22 tidak terbaca!"));
+        }
     }
 
     // ── Kirim alert Telegram jika darurat ────────────────────────
-    if (suhu_terakhir >= BATAS_KRITIS && !sudah_alert) {
-        bot.sendMessage(CHAT_ID,
-            "🚨 *BAHAYA KRITIS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
-            "Melebihi 35°C — Sapi butuh pendinginan SEGERA!\nHubungi drh. / teknisi!", "Markdown");
-        sudah_alert = true;
+    // sensor_valid mencegah alert palsu saat boot (suhu_terakhir masih 0)
+    if (sensor_valid) {
+        if (suhu_terakhir >= BATAS_KRITIS && !sudah_alert) {
+            bot.sendMessage(CHAT_ID,
+                "🚨 *BAHAYA KRITIS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
+                "Melebihi 35°C — Sapi butuh pendinginan SEGERA!\nHubungi drh. / teknisi!", "Markdown");
+            sudah_alert = true;
 
-    } else if (suhu_terakhir >= BATAS_PANAS && !sudah_alert) {
-        bot.sendMessage(CHAT_ID,
-            "⚠️ *PERINGATAN SUHU PANAS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
-            "Melewati batas aman 30°C.\nNyalakan kipas / buka ventilasi!", "Markdown");
-        sudah_alert = true;
+        } else if (suhu_terakhir >= BATAS_PANAS && !sudah_alert) {
+            bot.sendMessage(CHAT_ID,
+                "⚠️ *PERINGATAN SUHU PANAS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
+                "Melewati batas aman 30°C.\nNyalakan kipas / buka ventilasi!", "Markdown");
+            sudah_alert = true;
 
-    } else if (suhu_terakhir < BATAS_PANAS && sudah_alert) {
-        bot.sendMessage(CHAT_ID,
-            "✅ *Kandang Kembali Normal*\nSuhu: " + String(suhu_terakhir, 1) + "°C\n"
-            "Kelembaban: " + String(lembab_terakhir, 1) + "%", "Markdown");
-        sudah_alert = false;
+        } else if (suhu_terakhir < BATAS_PANAS && sudah_alert) {
+            bot.sendMessage(CHAT_ID,
+                "✅ *Kandang Kembali Normal*\nSuhu: " + String(suhu_terakhir, 1) + "°C\n"
+                "Kelembaban: " + String(lembab_terakhir, 1) + "%", "Markdown");
+            sudah_alert = false;
+        }
     }
 
     // ── Kirim laporan berkala ke Telegram (tiap 30 detik) ────────
     if (sekarang - waktuKirimTerakhir >= WAKTU_KIRIM) {
         waktuKirimTerakhir = sekarang;
-        String laporan = "📊 *Laporan Berkala Kandang*\n";
-        laporan += "🌡 Suhu    : " + String(suhu_terakhir, 1) + "°C\n";
-        laporan += "💧 Lembab : " + String(lembab_terakhir, 1) + "%\n";
-        laporan += (suhu_terakhir < BATAS_PANAS) ? "✅ Status  : AMAN" : "⚠️ Status  : BUTUH PERHATIAN";
-        bot.sendMessage(CHAT_ID, laporan, "Markdown");
-        Serial.println(F("[Telegram] Laporan berkala dikirim."));
+        if (sensor_valid) {
+            String laporan = "📊 *Laporan Berkala Kandang*\n";
+            laporan += "T: " + String(suhu_terakhir, 1) + "C | ";
+            laporan += "H: " + String(lembab_terakhir, 1) + "%\n";
+            laporan += (suhu_terakhir < BATAS_PANAS) ? "Status: AMAN" : "Status: BUTUH PERHATIAN";
+            bot.sendMessage(CHAT_ID, laporan, "Markdown");
+            Serial.println(F("[Telegram] Laporan berkala dikirim."));
+        }
     }
 
     // ── Cek pesan masuk dari Telegram (tiap 1 detik) ─────────────
+    // Tidak pakai delay(2000) di sini agar timer WAKTU_BACA tetap akurat!
     if (sekarang - waktuBacaTerakhir >= WAKTU_BACA) {
         waktuBacaTerakhir = sekarang;
         int pesan = bot.getUpdates(bot.last_message_received + 1);
@@ -258,8 +280,7 @@ void loop() {
             pesan = bot.getUpdates(bot.last_message_received + 1);
         }
     }
-
-    delay(2000);
+    // Tidak ada delay() di sini — loop non-blocking!
 }
 
 // ================================================================

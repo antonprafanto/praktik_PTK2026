@@ -15,12 +15,12 @@
 
 ## 📥 Download Materi Kuliah
 
-| File | Keterangan | Link |
-|------|-----------|------|
-| 📊 **Slide Presentasi PPT** | Materi lengkap 20 slide, tema hijau premium | [⬇️ Download PPT](IoT_untuk_Peternakan_UNMUL.pptx) |
-| 🧪 **Kode Arduino (sketch.ino)** | Kode simulasi monitor suhu kandang | [⬇️ Download sketch.ino](praktikum_wokwi/sketch.ino) |
-| 🔌 **Diagram Rangkaian (diagram.json)** | Rangkaian virtual sensor + LCD + LED | [⬇️ Download diagram.json](praktikum_wokwi/diagram.json) |
-| 📖 **Panduan Praktikum** | Langkah-langkah penggunaan Wokwi | [⬇️ Download Panduan](praktikum_wokwi/PANDUAN_PRAKTIKUM.md) |
+| File | Keterangan | Download Langsung |
+|------|-----------|:-----------------:|
+| 📊 **Slide Presentasi PPT** | Materi lengkap 20 slide, tema hijau premium | [⬇️ **Download PPT**](https://github.com/antonprafanto/praktik_PTK2026/raw/main/IoT_untuk_Peternakan_UNMUL.pptx) |
+| 🧪 **Kode Arduino (sketch.ino)** | Kode simulasi monitor suhu kandang sapi | [⬇️ Download sketch.ino](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/sketch.ino) |
+| 🔌 **Diagram Rangkaian (diagram.json)** | Rangkaian virtual sensor + LCD + LED | [⬇️ Download diagram.json](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/diagram.json) |
+| 📖 **Panduan Praktikum** | Langkah-langkah Wokwi + soal diskusi | [⬇️ Download Panduan](https://github.com/antonprafanto/praktik_PTK2026/raw/main/praktikum_wokwi/PANDUAN_PRAKTIKUM.md) |
 
 ---
 

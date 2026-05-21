@@ -2,7 +2,9 @@
 generate_iot_ppt*.py
 add_wokwi_slides.py
 add_telegram_slides.py
+update_agenda.py
 audit_ppt.py
-audit_semua.py
+audit_semua*.py
+audit_mendalam*.py
 patch_bounds.py
 wokwi_kandang_sapi/

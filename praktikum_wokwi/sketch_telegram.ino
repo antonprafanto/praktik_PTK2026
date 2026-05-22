@@ -45,9 +45,10 @@ const char* password = "";
 #define DHT_PIN       15    // DHT22 → GPIO 15
 #define PIN_LED_ALARM  2    // LED Merah → GPIO 2
 
-// ── Batas Suhu Kandang Sapi ────────────────────────────────────
-#define BATAS_PANAS   30.0  // ⚠️ Peringatan
-#define BATAS_KRITIS  35.0  // 🚨 Darurat
+// ── Batas Suhu & Kelembaban Kandang Sapi ──────────────────────────
+#define BATAS_PANAS   30.0  // ⚠️ Peringatan suhu
+#define BATAS_KRITIS  35.0  // 🚨 Darurat suhu
+#define BATAS_LEMBAB  85.0  // 🍄 Peringatan kelembaban (risiko jamur)
 
 // ── Interval Waktu ─────────────────────────────────────────────
 #define WAKTU_KIRIM   30000   // Kirim laporan setiap 30 detik
@@ -64,11 +65,13 @@ UniversalTelegramBot bot(BOTtoken, klien);
 DHTesp             dhtSensor;
 
 // ── Variabel Status ───────────────────────────────────────────
-bool  sudah_alert        = false;
-bool  sensor_valid       = false;   // ← Cegah alert palsu saat boot (suhu=0)
+bool  sudah_alert        = false;  // Flag alert suhu
+bool  sudah_alert_lembab = false;  // Flag alert kelembaban tinggi
+bool  sensor_valid       = false;  // Cegah alert palsu saat boot
+bool  led_manual         = false;  // LED dikontrol manual via Telegram?
 float suhu_terakhir      = 0;
 float lembab_terakhir    = 0;
-unsigned long waktu_baca_dht = 0;  // ← Guard interval minimum DHTesp (2 detik)
+unsigned long waktu_baca_dht = 0;  // Guard interval minimum DHTesp (2 detik)
 
 // ================================================================
 //  FUNGSI: Tampilkan data di OLED
@@ -114,24 +117,48 @@ void tanganiPesan(int jumlahPesan) {
 
         if (teks == "/start") {
             String sambutan = "Halo, " + nama + "! 🐄\n";
-            sambutan += "Selamat datang di Monitor Kandang Sapi UNMUL!\n\n";
-            sambutan += "Perintah yang tersedia:\n";
-            sambutan += "/status — Cek suhu & kelembaban sekarang\n";
-            sambutan += "/start  — Tampilkan menu ini\n";
-            bot.sendMessage(chat_id, sambutan, "");
+            sambutan += "Monitor Kandang Sapi UNMUL\n";
+            sambutan += "================================\n";
+            sambutan += "📌 Perintah yang tersedia:\n\n";
+            sambutan += "/status    — Cek suhu & kelembaban sekarang\n";
+            sambutan += "/led\_on   — 💡 Nyalakan LED alarm dari jarak jauh\n";
+            sambutan += "/led\_off  — ⚫ Matikan LED alarm\n";
+            sambutan += "/start     — Tampilkan menu ini lagi\n";
+            bot.sendMessage(chat_id, sambutan, "Markdown");
         }
 
         if (teks == "/status") {
+            String led_status = led_manual ? "💡 ON (manual)" : "(otomatis)";
             String laporan = "📊 *Status Kandang Terkini*\n";
             laporan += "🌡 Suhu     : " + String(suhu_terakhir, 1) + "°C\n";
             laporan += "💧 Lembab  : " + String(lembab_terakhir, 1) + "%\n";
+            laporan += "💡 LED      : " + led_status + "\n";
             if (suhu_terakhir >= BATAS_KRITIS)
                 laporan += "🚨 Status  : KRITIS - BAHAYA!";
             else if (suhu_terakhir >= BATAS_PANAS)
                 laporan += "⚠️ Status  : PANAS - Waspada!";
+            else if (lembab_terakhir >= BATAS_LEMBAB)
+                laporan += "🍄 Status  : LEMBAB TINGGI - Cek Ventilasi!";
             else
                 laporan += "✅ Status  : AMAN";
             bot.sendMessage(chat_id, laporan, "Markdown");
+        }
+
+        // ── FITUR BARU: Kontrol LED dari Telegram ──────────────────
+        if (teks == "/led_on") {
+            led_manual = true;
+            digitalWrite(PIN_LED_ALARM, HIGH);
+            bot.sendMessage(chat_id,
+                "💡 *LED Alarm DINYALAKAN!*\nLED menyala secara manual dari Telegram.", "Markdown");
+            Serial.println(F("[Telegram] LED dinyalakan via Telegram!"));
+        }
+
+        if (teks == "/led_off") {
+            led_manual = false;
+            digitalWrite(PIN_LED_ALARM, LOW);
+            bot.sendMessage(chat_id,
+                "⚫ *LED Alarm DIMATIKAN!*\nLED kembali ke mode otomatis (sensor suhu).", "Markdown");
+            Serial.println(F("[Telegram] LED dimatikan via Telegram!"));
         }
     }
 }
@@ -234,26 +261,46 @@ void loop() {
         }
     }
 
-    // ── Kirim alert Telegram jika darurat ────────────────────────
+    // ── ALERT: Suhu ────────────────────────────────────────────────
     // sensor_valid mencegah alert palsu saat boot (suhu_terakhir masih 0)
     if (sensor_valid) {
         if (suhu_terakhir >= BATAS_KRITIS && !sudah_alert) {
+            if (!led_manual) digitalWrite(PIN_LED_ALARM, HIGH);
             bot.sendMessage(CHAT_ID,
                 "🚨 *BAHAYA KRITIS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
                 "Melebihi 35°C — Sapi butuh pendinginan SEGERA!\nHubungi drh. / teknisi!", "Markdown");
             sudah_alert = true;
 
         } else if (suhu_terakhir >= BATAS_PANAS && !sudah_alert) {
+            if (!led_manual) digitalWrite(PIN_LED_ALARM, HIGH);
             bot.sendMessage(CHAT_ID,
                 "⚠️ *PERINGATAN SUHU PANAS!*\nSuhu kandang: " + String(suhu_terakhir, 1) + "°C\n"
                 "Melewati batas aman 30°C.\nNyalakan kipas / buka ventilasi!", "Markdown");
             sudah_alert = true;
 
         } else if (suhu_terakhir < BATAS_PANAS && sudah_alert) {
+            if (!led_manual) digitalWrite(PIN_LED_ALARM, LOW);
             bot.sendMessage(CHAT_ID,
                 "✅ *Kandang Kembali Normal*\nSuhu: " + String(suhu_terakhir, 1) + "°C\n"
                 "Kelembaban: " + String(lembab_terakhir, 1) + "%", "Markdown");
             sudah_alert = false;
+        }
+
+        // ── FITUR BARU: Alert Kelembaban > 85% (risiko jamur) ───────────
+        if (lembab_terakhir >= BATAS_LEMBAB && !sudah_alert_lembab) {
+            bot.sendMessage(CHAT_ID,
+                "🍄 *PERINGATAN KELEMBABAN TINGGI!*\n"
+                "Kelembaban kandang: " + String(lembab_terakhir, 1) + "%\n"
+                "Melebihi batas aman 85%!\n"
+                "Risiko tumbuhnya jamur pada pakan & kandang.\n"
+                "Buka ventilasi / aktifkan exhaust fan!", "Markdown");
+            sudah_alert_lembab = true;
+            Serial.println(F("[ALERT] Kelembaban kritis!"));
+
+        } else if (lembab_terakhir < BATAS_LEMBAB && sudah_alert_lembab) {
+            bot.sendMessage(CHAT_ID,
+                "✅ *Kelembaban Kembali Normal*\nKelembaban: " + String(lembab_terakhir, 1) + "%", "Markdown");
+            sudah_alert_lembab = false;
         }
     }
 
@@ -284,9 +331,16 @@ void loop() {
 }
 
 // ================================================================
-//  TANTANGAN MAHASISWA:
+//  FITUR YANG SUDAH DIIMPLEMENTASI:
+//  ✅ /led_on  — Nyalakan LED alarm dari Telegram (jarak jauh!)
+//  ✅ /led_off — Matikan LED alarm dari Telegram
+//  ✅ Alert otomatis jika kelembaban > 85% (risiko jamur)
+//  ✅ Alert suhu > 30°C (panas) dan > 35°C (kritis)
+//
+//  TANTANGAN LANJUTAN UNTUK MAHASISWA:
 //  1. Ubah BATAS_PANAS dari 30 → 25. Apa yang berubah?
-//  2. Tambahkan perintah /led_on dan /led_off dari Telegram
-//     untuk kontrol LED dari jarak jauh!
-//  3. Tambahkan alert jika kelembaban > 85% (risiko jamur)
+//  2. Tambahkan perintah /led_kedip agar LED berkedip-kedip!
+//     (Petunjuk: pakai millis() dan toggle digitalRead)
+//  3. Tambahkan perintah /kipas_on untuk simulasi kipas angin
+//     (Tambahkan LED Biru sebagai indikator kipas)
 // ================================================================

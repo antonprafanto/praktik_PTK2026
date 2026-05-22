@@ -15,7 +15,7 @@
       "type": "wokwi-dht22",
       "top": 30,
       "left": 10,
-      "attrs": { "temperature": "33", "humidity": "75" }
+      "attrs": { "temperature": "33", "humidity": "86" }
     },
     {
       "id": "oled",

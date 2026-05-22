@@ -79,14 +79,26 @@
                      (Nyala jika panas)
 ```
 
-### Contoh Notifikasi yang Akan Muncul di HP Kamu:
+### Contoh Notifikasi & Perintah Telegram:
 
-| Kondisi Suhu | Notifikasi Telegram |
-|-------------|---------------------|
+**🔔 Alert Otomatis (dikirim bot ke kamu):**
+
+| Kondisi | Notifikasi Telegram |
+|---------|---------------------|
 | Suhu > 35°C | 🚨 **BAHAYA KRITIS!** — Suhu 37.2°C, sapi butuh pendinginan SEGERA! |
-| Suhu > 30°C | ⚠️ **PERINGATAN** — Suhu 31.5°C, melewati batas aman, nyalakan kipas! |
-| Suhu Normal | ✅ **KANDANG NORMAL** — Suhu 26.8°C, kondisi aman |
-| Setiap 10 menit | 📊 **Laporan Berkala** — Suhu, kelembaban, dan status kandang |
+| Suhu > 30°C | ⚠️ **PERINGATAN PANAS** — Suhu 31.5°C, melewati batas aman, nyalakan kipas! |
+| Suhu kembali normal | ✅ **KANDANG NORMAL** — Suhu 26.8°C, kondisi aman |
+| Kelembaban > 85% | 🍄 **LEMBAB TINGGI** — 87.3%, risiko jamur! Buka ventilasi segera! |
+| Setiap 30 detik | 📊 **Laporan Berkala** — Suhu, kelembaban, dan status kandang |
+
+**📲 Perintah Bot (kamu kirim ke bot):**
+
+| Perintah | Fungsi |
+|----------|--------|
+| `/start` | Tampilkan menu semua perintah |
+| `/status` | Cek suhu, kelembaban & status LED saat ini |
+| `/led_on` | 💡 Nyalakan LED alarm dari jarak jauh (remote control!) |
+| `/led_off` | ⚫ Matikan LED alarm dari jarak jauh |
 
 > **Di Simulator Wokwi:** notifikasi Telegram ditampilkan di **Serial Monitor** (kotak hitam di bawah simulasi)
 > **Di Hardware Nyata:** notifikasi langsung terkirim ke HP kamu via aplikasi Telegram
